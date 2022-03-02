@@ -3,7 +3,12 @@
 -- Author: Jonathan Ou
 -- Desc: This file demonstrates how to use Functions
 -- Change Log: When,Who,What
--- 2017-01-01,YourNameHere,Created File
+-- 2022-02-28,JOu, Created File
+-- 2022-02-28,JOu, utilized format function to customize format of the column values
+-- 2022-03-01,JOu, utilized IIF to replace specific values in column
+-- 2022-03-01,JOu, called out columns from separate views in new view
+-- 2022-03-01,JOu, utilized case function to call out separate KPI values
+-- 2022-03-01,JOu, completed homework file
 --**************************************************************************--
 Begin Try
 	Use Master;
@@ -195,10 +200,9 @@ Print
 -- Order the result by the product name.
 
 -- <Put Your Code Here> --
-
 Select
-	ProductName,
-	UnitPrice = Format(UnitPrice,'C2','en-US')
+	[ProductName],
+	[UnitPrice] = Format(UnitPrice,'C2','en-US')
 From dbo.Products
 Order by 1
 go
@@ -210,9 +214,9 @@ go
 -- <Put Your Code Here> --
 
 Select
-	CategoryName,
-	ProductName,
-	UnitPrice = Format(UnitPrice,'C2','en-US')
+	[CategoryName],
+	[ProductName],
+	[UnitPrice] = Format(UnitPrice,'C2','en-US')
 From Categories
 Join Products
 on Categories.CategoryID = Products.CategoryID
@@ -225,16 +229,16 @@ go
 -- Order the results by the Product and Date.
 
 -- <Put Your Code Here> --
-Select
-	ProductName,
-	InventoryDate = Format(InventoryDate,'MMMM, yyyy','en-US'),
-	Count
+Select top 100000
+	[ProductName],
+	[InventoryDate] = Format(InventoryDate,'MMMM, yyyy','en-US'),
+	[Count]
 From Products
 Join Inventories
 on Products.ProductID = Inventories.ProductID
 -- Order by 1, 2
 -- Order by 1, 2 DESC
-Order by 1, month(InventoryDate) ASC
+Order by 1, month(InventoryDate)
 go
 
 -- Question 4 (10% of pts): 
@@ -245,19 +249,20 @@ go
 
 -- <Put Your Code Here> --
 Create
-View vProductInventories
+View vProductInventories 
 AS
-	Select
-		ProductName,
-		InventoryDate = Format(InventoryDate,'MMMM, yyyy','en-US'),
-		Count
+	Select top 100000
+		[ProductName],
+		[InventoryDate] = Format(InventoryDate,'MMMM, yyyy','en-US'),
+		[Count]
 	From Products
 	Join Inventories
 	on Products.ProductID = Inventories.ProductID
+	Order by 1, month(InventoryDate)
 go
 
 -- Check that it works: Select * From vProductInventories;
-Select * From vProductInventories Order by 1, month(InventoryDate) ASC
+Select * From vProductInventories
 go
 
 -- Question 5 (10% of pts): 
@@ -270,19 +275,22 @@ go
 Create
 View vCategoryInventories
 AS 
-	Select Distinct
-		CategoryName,
-		InventoryDate = Format(InventoryDate, 'MMMM, yyyy', 'en-US'),
-		Count = sum(Count) OVER (PARTITION by CategoryName, InventoryDate)
+	Select top 100000
+		[CategoryName],
+		[InventoryDate] = Format(InventoryDate, 'MMMM, yyyy', 'en-US'),
+		--[Count] = sum(Count) OVER (PARTITION by CategoryName, InventoryDate)
+		[Count] = sum(Count)
 	From Categories
 	Join Products
 	on Categories.CategoryID = Products.CategoryID
 	Join Inventories
 	on Products.ProductID = Inventories.ProductID
+	Group by CategoryName, InventoryDate
+	Order By CategoryName, month(InventoryDate) 
 go
 
 -- Check that it works: Select * From vCategoryInventories;
-Select * from vCategoryInventories Order By 1, month(InventoryDate) ASC
+Select * from vCategoryInventories
 go
 
 -- Question 6 (10% of pts): 
@@ -296,10 +304,11 @@ go
 Create 
 View vProductInventoriesWithPreviousMonthsCounts
 AS
-	Select
-		ProductName,
+	Select top 100000000
+		[ProductName],
 		[InventoryDate] = Format(InventoryDate, 'MMMM, yyyy', 'en-US'),
-		[Count] = sum(Count) Over(PARTITION by ProductName, InventoryDate),
+		--[Count] = sum(Count) Over(PARTITION by ProductName, InventoryDate),
+		[Count] = sum(Count),
 		--CountPrevious = IIF(Month(InventoryDate) = 'January' ,0, Lag(sum(Count)) Over(Order by ProductName, InventoryDate))
 		[CountPrevious] = IIF(Month(InventoryDate) = 1 ,0, Lag(sum(Count)) Over(Order by ProductName, InventoryDate))
 	From Products
@@ -324,7 +333,7 @@ Create
 View vProductInventoriesWithPreviousMonthCountsWithKPIs
 AS
 	Select 
-		ProductName,
+		[ProductName],
 		[InventoryDate],
 		[Count],
 		--CountPrevious = IIF(Month(InventoryDate) = 'January' ,0, Lag(sum(Count)) Over(Order by ProductName, InventoryDate))
@@ -356,7 +365,7 @@ Create Function dbo.fProductInventoriesWithPreviousMonthCountsWithKPIs(@CountPre
 	AS
 		Return(
 			Select
-				ProductName,
+				[ProductName],
 				[InventoryDate],
 				[Count],
 				[CountPrevious],
